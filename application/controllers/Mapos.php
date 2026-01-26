@@ -635,4 +635,94 @@ class Mapos extends MY_Controller {
         }
         return file_put_contents($env_file_path, $env_file) ? true : false;
     }
+    public function iniciarWhatsapp()
+    {
+        if (!$this->permission->checkPermission($this->session->userdata('permissao'), 'cSistema')) {
+            echo json_encode(['result' => false, 'message' => 'Sem permissão']);
+            return;
+        }
+
+        // Use the shell script to ensure complete detachment
+        $scriptPath = FCPATH . 'api/whatsapp/start_whatsapp.sh';
+        $command = 'bash "' . $scriptPath . '"';
+        
+        // Execute the command and capture the output (PID)
+        $pid = exec($command);
+        
+        // Log the PID for debugging
+        log_message('debug', 'WhatsApp Service Started via Script with PID: ' . $pid);
+        
+        // Wait a small moment for startup
+        sleep(2);
+        
+        echo json_encode(['result' => true, 'message' => 'Serviço iniciado (PID: ' . $pid . ')']);
+    }
+
+    public function pararWhatsapp()
+    {
+        if (!$this->permission->checkPermission($this->session->userdata('permissao'), 'cSistema')) {
+            echo json_encode(['result' => false, 'message' => 'Sem permissão']);
+            return;
+        }
+
+        // Send stop request to server
+        $ch = curl_init('http://localhost:3000/stop');
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode == 200) {
+             echo json_encode(['result' => true, 'message' => 'Serviço parado']);
+        } else {
+             // Fallback force kill if API doesn't respond
+             // Finding PID for node server.js might be tricky without pgrep, but trying API first is safer.
+             echo json_encode(['result' => false, 'message' => 'Erro ao parar serviço (API não respondeu)']);
+        }
+    }
+
+    public function desconectarWhatsapp()
+    {
+        if (!$this->permission->checkPermission($this->session->userdata('permissao'), 'cSistema')) {
+            echo json_encode(['result' => false, 'message' => 'Sem permissão']);
+            return;
+        }
+
+        $ch = curl_init('http://localhost:3000/logout');
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Wait bit longer for file deletion
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode == 200) {
+             echo json_encode(['result' => true, 'message' => 'Desconectado e sessão limpa com sucesso']);
+        } else {
+             echo json_encode(['result' => false, 'message' => 'Erro ao desconectar']);
+        }
+    }
+
+    public function verificarWhatsapp()
+    {
+        if (!$this->permission->checkPermission($this->session->userdata('permissao'), 'cSistema')) {
+             echo json_encode(['result' => false, 'message' => 'Sem permissão']);
+             return;
+        }
+
+        $ch = curl_init('http://localhost:3000/status');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode == 200 && $response) {
+            echo $response;
+        } else {
+            echo json_encode(['status' => 'disconnected', 'message' => 'Serviço offline']);
+        }
+    }
 }

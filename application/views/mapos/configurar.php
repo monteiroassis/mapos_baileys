@@ -1,3 +1,4 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <div class="row-fluid" style="margin-top:0">
     <div class="span12">
         <div class="widget-box">
@@ -16,6 +17,7 @@
                 <li><a data-toggle="tab" href="#menu5">OS</a></li>
                 <li><a data-toggle="tab" href="#menu6">API</a></li>
                 <li><a data-toggle="tab" href="#menu7">E-mail</a></li>
+                <li><a data-toggle="tab" href="#menu8">WhatsApp</a></li>
             </ul>
             <form action="<?php echo current_url(); ?>" id="formConfigurar" method="post" class="form-horizontal">
                 <div class="widget-content nopadding tab-content">
@@ -506,6 +508,48 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Menu WhatsApp -->
+                    <div id="menu8" class="tab-pane fade">
+                        <div class="row-fluid">
+                            <div class="span12">
+                                <div class="widget-box">
+                                    <div class="widget-title">
+                                        <span class="icon">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </span>
+                                        <h5>Controle do Serviço WhatsApp (Baileys)</h5>
+                                    </div>
+                                    <div class="widget-content">
+                                        <div class="alert alert-info">
+                                            O serviço do WhatsApp (Node.js) precisa estar rodando para que as notificações sejam enviadas.
+                                        </div>
+                                        
+                                        <div style="text-align: center; margin-bottom: 20px;">
+                                            <h4>Status do Serviço: <span id="whatsapp-service-status" class="label">Verificando...</span></h4>
+                                            
+                                            <div style="margin-top: 15px;">
+                                                <button type="button" id="btn-start-whatsapp" class="btn btn-success"><i class="bx bx-play"></i> Iniciar Serviço</button>
+                                                <button type="button" id="btn-stop-whatsapp" class="btn btn-danger"><i class="bx bx-stop"></i> Parar Serviço</button>
+                                                <button type="button" id="btn-check-whatsapp" class="btn btn-info"><i class="bx bx-refresh"></i> Atualizar Status</button>
+                                                <button type="button" id="btn-disconnect-whatsapp" class="btn btn-warning" style="display:none;"><i class="bx bx-log-out"></i> Desconectar</button>
+                                            </div>
+                                        </div>
+
+                                        <div id="qr-code-container" style="text-align: center; display: none;">
+                                            <h5>Escaneie o QR Code abaixo com seu celular:</h5>
+                                            <div id="qrcode-display" style="margin: 10px auto; padding: 10px; background: white; display: inline-block;"></div>
+                                            <p>Aguardando conexão...</p>
+                                        </div>
+
+                                        <div id="whatsapp-connected-msg" style="text-align: center; display: none; color: green;">
+                                            <h3><i class="bx bx-check-circle"></i> Conectado!</h3>
+                                            <p id="whatsapp-user-info"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -562,6 +606,183 @@
             if ($(this).val() != "0")
                 document.getElementById("notifica_whats").value += $(this).val();
             $(this).prop('selectedIndex', 0);
+        });
+
+        // WhatsApp Control Logic
+        var whatsappCheckInterval = null;
+
+        function checkWhatsappStatus() {
+            $.ajax({
+                url: '<?= site_url('mapos/verificarWhatsapp') ?>',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    // Debugging
+                    // console.log('WhatsApp Status Response:', response); 
+
+                    if (typeof response === 'string') {
+                        try {
+                            response = JSON.parse(response);
+                        } catch(e) {
+                            console.error('Failed to parse JSON', e);
+                            $('#whatsapp-service-status').text('Erro JS: JSON inválido');
+                            return;
+                        }
+                    }
+
+                    if (response.status === 'connected') {
+                        $('#whatsapp-service-status').removeClass('label-important label-warning').addClass('label-success').text('Online e Conectado');
+                        $('#qr-code-container').hide();
+                        $('#whatsapp-connected-msg').show();
+                        $('#btn-disconnect-whatsapp').show(); // Show disconnect button
+                        if (response.user) {
+                            $('#whatsapp-user-info').text('Conectado como: ' + (response.user.name || response.user.id));
+                        }
+                        // Stop polling if connected, but maybe keep checking less frequently? For now stop to save resources.
+                        // Actually, better to keep checking to detect disconnection.
+                    } else if (response.status === 'disconnected') {
+                         $('#whatsapp-service-status').removeClass('label-success label-warning').addClass('label-important').text('Desconectado / Aguardando QR');
+                         $('#btn-disconnect-whatsapp').hide(); // Hide button
+                         
+                         if (response.qr) {
+                             $('#qr-code-container').show();
+                             $('#whatsapp-connected-msg').hide();
+                             
+                             // Clear previous QR
+                             $('#qrcode-display').empty();
+                             
+                             if (typeof QRious === 'undefined') {
+                                 console.error('QRious library not loaded');
+                                 $('#qrcode-display').html('<div class="alert alert-error">Biblioteca QRious não carregada. Verifique internet/blockers.</div>');
+                                 return;
+                             }
+
+                             try {
+                                 // Render using QRious
+                                 var qr = new QRious({
+                                     element: document.createElement('canvas'),
+                                     value: response.qr,
+                                     size: 250
+                                 });
+                                 $('#qrcode-display').append(qr.element);
+                                 // console.log('QR Code rendered');
+                             } catch(e) {
+                                 console.error('QR Render Error:', e);
+                                 $('#qrcode-display').text('Erro ao renderizar QR: ' + e.message);
+                             }
+                             
+                         } else {
+                             // console.log("Status disconnected but no QR received yet.");
+                             $('#qr-code-container').show(); // Show container to inform waiting
+                             $('#qrcode-display').html('<div class="alert alert-info">Aguardando geração do QR Code...</div>');
+                         }
+                    } else {
+                         $('#whatsapp-service-status').removeClass('label-success label-important').addClass('label-warning').text('Serviço Offline');
+                         $('#qr-code-container').hide();
+                         $('#whatsapp-connected-msg').hide();
+                    }
+                },
+                error: function(xhr, status, error) {
+                     console.error('Ajax Error:', status, error);
+                     // console.log('Response Text:', xhr.responseText);
+                     $('#whatsapp-service-status').removeClass('label-success label-warning').addClass('label-important').text('Erro ao comunicar: ' + status);
+                },
+                complete: function() {
+                    // Schedule next check
+                    if(whatsappCheckInterval) clearTimeout(whatsappCheckInterval);
+                    whatsappCheckInterval = setTimeout(checkWhatsappStatus, 5000); 
+                }
+            });
+        }
+        
+        // Clear interval if user navigates away or closes tab (standard cleanup)
+        $(window).on('unload', function() {
+            if(whatsappCheckInterval) clearTimeout(whatsappCheckInterval);
+        });
+
+        $('#btn-start-whatsapp').click(function() {
+            var btn = $(this);
+            btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin"></i> Iniciando...');
+            
+            var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
+            var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
+            var data = {};
+            data[csrfName] = csrfHash;
+
+            $.ajax({
+                url: '<?= site_url('mapos/iniciarWhatsapp') ?>',
+                type: 'POST',
+                dataType: 'json',
+                data: data,
+                success: function(response) {
+                    if(response.result) {
+                        alert(response.message);
+                        setTimeout(checkWhatsappStatus, 3000);
+                    } else {
+                        alert('Erro: ' + response.message);
+                    }
+                    btn.prop('disabled', false).html('<i class="bx bx-play"></i> Iniciar Serviço');
+                }
+            });
+        });
+
+        $('#btn-stop-whatsapp').click(function() {
+             if(!confirm('Tem certeza que deseja parar o serviço do WhatsApp?')) return;
+             
+             var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
+             var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
+             var data = {};
+             data[csrfName] = csrfHash;
+
+             $.ajax({
+                url: '<?= site_url('mapos/pararWhatsapp') ?>',
+                type: 'POST',
+                dataType: 'json',
+                data: data,
+                success: function(response) {
+                    alert(response.message);
+                    checkWhatsappStatus();
+                }
+            });
+        });
+
+        $('#btn-check-whatsapp').click(function() {
+            checkWhatsappStatus();
+        });
+
+        $('#btn-disconnect-whatsapp').click(function() {
+             if(!confirm('Deseja desconectar e limpar a sessão do WhatsApp? Isso irá gerar um novo QR Code.')) return;
+             
+             var btn = $(this);
+             btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin"></i> Desconectando...');
+
+             var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
+             var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
+             var data = {};
+             data[csrfName] = csrfHash;
+
+             $.ajax({
+                url: '<?= site_url('mapos/desconectarWhatsapp') ?>',
+                type: 'POST',
+                dataType: 'json',
+                data: data,
+                success: function(response) {
+                    alert(response.message);
+                    checkWhatsappStatus();
+                    btn.prop('disabled', false).html('<i class="bx bx-log-out"></i> Desconectar');
+                },
+                error: function() {
+                    alert('Erro ao tentar desconectar.');
+                    btn.prop('disabled', false).html('<i class="bx bx-log-out"></i> Desconectar');
+                }
+            });
+        });
+
+        // Check status when tab is shown
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            if ($(e.target).attr('href') == '#menu8') {
+                checkWhatsappStatus();
+            }
         });
     });
 </script>

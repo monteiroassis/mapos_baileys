@@ -3,67 +3,66 @@ version: '3.9'
 services:
   nginx:
     image: nginx:alpine
-    container_name: nginx
-    volumes:
-      - "./etc/nginx/default.conf:/etc/nginx/conf.d/default.conf"
-      - "../:/var/www/html"
-      - "./etc/nginx/default.template.conf:/etc/nginx/conf.d/default.template"
+    container_name: mapos_nginx
     ports:
-      - "${NGINX_PORT}:${NGINX_PORT}"
-    env_file:
-      - ".env"
-    command: /bin/sh -c "envsubst '$$NGINX_HOST $$NGINX_PORT' < /etc/nginx/conf.d/default.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+      - "8001:80"
+    volumes:
+      - "../:/var/www/html"
+      - "./etc/nginx/default.conf:/etc/nginx/conf.d/default.conf"
     restart: always
     depends_on:
       - php-fpm
       - mysql
 
   php-fpm:
-    container_name: php-fpm
+    container_name: mapos_php
+    # Constrói a imagem localmente usando o Dockerfile na pasta etc/php
     build:
       context: ./etc/php
       dockerfile: Dockerfile
     restart: always
     volumes:
+      - "../:/var/www/html"
       - "./etc/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
       - "./etc/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini"
-      - "../:/var/www/html"
 
-  composer:
-    container_name: composer
-    build:
-      context: ./etc/composer
-      dockerfile: Dockerfile
-    volumes:
-      - "../:/app"
-    command: install --ignore-platform-reqs --no-scripts
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
-    ports:
-      - "${PHP_MY_ADMIN_PORT}:80"
+  whatsapp:
+    image: node:20-slim
+    container_name: mapos_whatsapp
+    working_dir: /var/www/html/api/whatsapp
     environment:
-      - PMA_ARBITRARY=1
-      - PMA_HOST=${MYSQL_MAPOS_HOST}
-      - PMA_USER=${MYSQL_MAPOS_USER}
-      - PMA_PASSWORD=${MYSQL_MAPOS_PASSWORD}
+      - PORT=3000
+    volumes:
+      - "../:/var/www/html"
+    command: sh -c "npm install && node server.js"
     restart: always
     depends_on:
       - mysql
 
   mysql:
-    image: mysql:${MYSQL_MAPOS_VERSION}
-    container_name: mysql
+    image: mysql:8.4
+    container_name: mapos_mysql
     restart: always
-    env_file:
-      - ".env"
     environment:
-      - MYSQL_DATABASE=${MYSQL_MAPOS_DATABASE}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_MAPOS_ROOT_PASSWORD}
-      - MYSQL_USER=${MYSQL_MAPOS_USER}
-      - MYSQL_PASSWORD=${MYSQL_MAPOS_PASSWORD}
-    ports:
-      - "${MYSQL_MAPOS_PORT}:3306"
+      - MYSQL_DATABASE=mapos
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=mapos
+      - MYSQL_PASSWORD=mapos
     volumes:
-      - "./data/db/mysql:/var/lib/mysql"
+      - mysql_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: mapos_phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mapos_mysql
+      - PMA_USER=mapos
+      - PMA_PASSWORD=mapos
+    restart: always
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:

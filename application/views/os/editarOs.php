@@ -47,8 +47,8 @@
                         $troca = [$result->nomeCliente, $result->idOs, $result->status, 'R$ ' . ($result->desconto != 0 && $result->valor_desconto != 0 ? number_format($result->valor_desconto, 2, ',', '.') : number_format($totalProdutos + $totalServico, 2, ',', '.')), strip_tags($result->descricaoProduto), ($emitente ? $emitente->nome : ''), ($emitente ? $emitente->telefone : ''), strip_tags($result->observacoes), strip_tags($result->defeito), strip_tags($result->laudoTecnico), date('d/m/Y', strtotime($result->dataFinal)), date('d/m/Y', strtotime($result->dataInicial)), $result->garantia . ' dias'];
                         $texto_de_notificacao = $this->os_model->criarTextoWhats($texto_de_notificacao, $troca);
                         if (!empty($zapnumber)) {
-                            echo '<a title="Via WhatsApp" class="button btn btn-mini btn-success" id="enviarWhatsApp" target="_blank" href="https://wa.me/send?phone=55' . $zapnumber . '&text=' . $texto_de_notificacao . '" ' . ($zapnumber == '' ? 'disabled' : '') . '>
-                                <span class="button__icon"><i class="bx bxl-whatsapp"></i></span> <span class="button__text">WhatsApp</span>
+                            echo '<a href="' . base_url() . 'index.php/os/enviarWhatsappPdf/' . $result->idOs . '" class="button btn btn-mini btn-success" title="Enviar PDF via WhatsApp">
+                                <span class="button__icon"><i class="bx bxl-whatsapp"></i></span> <span class="button__text">WhatsApp PDF</span>
                             </a>';
                         }
                     } ?>
@@ -818,6 +818,8 @@
                 return false;
             }
         });
+    });
+
 
         $("#produto").autocomplete({
             source: "<?php echo base_url(); ?>index.php/os/autoCompleteProduto",
@@ -835,6 +837,7 @@
             source: "<?php echo base_url(); ?>index.php/os/autoCompleteServico",
             minLength: 2,
             select: function (event, ui) {
+                console.log("Selected: ", ui.item);
                 $("#idServico").val(ui.item.id);
                 $("#preco_servico").val(ui.item.preco);
                 $("#quantidade_servico").focus();
@@ -1230,6 +1233,15 @@
             }
         });
 
+    $(document).ready(function() {
+        // Debug
+        console.log("Document ready. Checking jQuery UI...");
+        if (typeof $.ui === 'undefined') {
+             console.error("jQuery UI is NOT loaded!");
+        } else {
+             console.log("jQuery UI is loaded. Version: " + $.ui.version);
+        }
+
         $(".datepicker").datepicker({
             dateFormat: 'dd/mm/yy'
         });
@@ -1238,5 +1250,267 @@
             lang: 'pt_br',
             semantic: { 'strikethrough': 's', }
         });
+
+        // Autocomplete Products
+        $("#produto").autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "<?php echo base_url(); ?>index.php/os/autoCompleteProduto",
+                    dataType: "json",
+                    data: {
+                        term: request.term
+                    },
+                    success: function(data) {
+                        response(data);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching products:", status, error);
+                    }
+                });
+            },
+            minLength: 2,
+            select: function (event, ui) {
+                console.log("Product Selected:", ui.item);
+                $("#codDeBarra").val(ui.item.codbar);
+                $("#idProduto").val(ui.item.id);
+                $("#estoque").val(ui.item.estoque);
+                $("#preco").val(ui.item.preco);
+                $("#quantidade").focus();
+            }
+        });
+
+        // Autocomplete Services
+        $("#servico").autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "<?php echo base_url(); ?>index.php/os/autoCompleteServico",
+                    dataType: "json",
+                    data: {
+                        term: request.term
+                    },
+                    success: function(data) {
+                        console.log("Service Data Received:", data);
+                        response(data);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching services:", status, error);
+                    }
+                });
+            },
+            minLength: 2,
+            select: function (event, ui) {
+                console.log("Service Selected:", ui.item);
+                $("#idServico").val(ui.item.id);
+                $("#preco_servico").val(ui.item.preco);
+                $("#quantidade_servico").focus();
+            }
+        });
+
+        // Clients
+        $("#cliente").autocomplete({
+            source: "<?php echo base_url(); ?>index.php/os/autoCompleteCliente",
+            minLength: 2,
+            select: function (event, ui) {
+                $("#clientes_id").val(ui.item.id);
+            }
+        });
+
+        // Technicians
+        $("#tecnico").autocomplete({
+            source: "<?php echo base_url(); ?>index.php/os/autoCompleteUsuario",
+            minLength: 2,
+            select: function (event, ui) {
+                $("#usuarios_id").val(ui.item.id);
+            }
+        });
+
+        // Warranty
+        $("#termoGarantia").autocomplete({
+            source: "<?php echo base_url(); ?>index.php/os/autoCompleteTermoGarantia",
+            minLength: 1,
+            select: function (event, ui) {
+                if (ui.item.id) {
+                    $("#garantias_id").val(ui.item.id);
+                }
+            }
+        });
+
+        $('#termoGarantia').on('change', function () {
+            if (!$(this).val() && $("#garantias_id").val()) {
+                $("#garantias_id").val('');
+                Swal.fire({
+                    type: "success",
+                    title: "Sucesso",
+                    text: "Termo de garantia removido"
+                });
+            }
+        });
+
+        // Form Validation OS
+        $("#formOs").validate({
+            rules: {
+                cliente: { required: true },
+                tecnico: { required: true },
+                dataInicial: { required: true }
+            },
+            messages: {
+                cliente: { required: 'Campo Requerido.' },
+                tecnico: { required: 'Campo Requerido.' },
+                dataInicial: { required: 'Campo Requerido.' }
+            },
+            errorClass: "help-inline",
+            errorElement: "span",
+            highlight: function (element, errorClass, validClass) {
+                $(element).parents('.control-group').addClass('error');
+            },
+            unhighlight: function (element, errorClass, validClass) {
+                $(element).parents('.control-group').removeClass('error');
+                $(element).parents('.control-group').addClass('success');
+            }
+        });
+
+        // Validation Products
+        $("#formProdutos").validate({
+            rules: {
+                preco: { required: true },
+                quantidade: { required: true }
+            },
+            messages: {
+                preco: { required: 'Inserir o preço' },
+                quantidade: { required: 'Insira a quantidade' }
+            },
+            submitHandler: function (form) {
+                var quantidade = parseInt($("#quantidade").val());
+                var estoque = parseInt($("#estoque").val());
+
+                <?php if (!$configuration['control_estoque']) {
+                    echo 'estoque = 1000000;';
+                } ?>
+
+                if (estoque < quantidade) {
+                    Swal.fire({
+                        type: "error",
+                        title: "Atenção",
+                        text: "Você não possui estoque suficiente."
+                    });
+                } else {
+                    var dados = $(form).serialize();
+                    $("#divProdutos").html("<div class='progress progress-info progress-striped active'><div class='bar' style='width: 100%'></div></div>");
+                    $.ajax({
+                        type: "POST",
+                        url: "<?php echo base_url(); ?>index.php/os/adicionarProduto",
+                        data: dados,
+                        dataType: 'json',
+                        success: function (data) {
+                            if (data.result == true) {
+                                $("#divProdutos").load("<?php echo current_url(); ?> #divProdutos");
+                                $("#quantidade").val('');
+                                $("#preco").val('');
+                                $("#resultado").val('');
+                                $("#desconto").val('');
+                                $("#divValorTotal").load("<?php echo current_url(); ?> #divValorTotal");
+                                $("#produto").val('').focus();
+                            } else {
+                                Swal.fire({
+                                    type: "error",
+                                    title: "Atenção",
+                                    text: "Ocorreu um erro ao tentar adicionar produto."
+                                });
+                            }
+                        }
+                    });
+                    return false;
+                }
+            }
+        });
+
+        // Validation Services
+        $("#formServicos").validate({
+            rules: {
+                servico: { required: true },
+                preco: { required: true },
+                quantidade: { required: true },
+            },
+            messages: {
+                servico: { required: 'Insira um serviço' },
+                preco: { required: 'Insira o preço' },
+                quantidade: { required: 'Insira a quantidade' },
+            },
+            submitHandler: function (form) {
+                var dados = $(form).serialize();
+                $("#divServicos").html("<div class='progress progress-info progress-striped active'><div class='bar' style='width: 100%'></div></div>");
+                $.ajax({
+                    type: "POST",
+                    url: "<?php echo base_url(); ?>index.php/os/adicionarServico",
+                    data: dados,
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.result == true) {
+                            $("#divServicos").load("<?php echo current_url(); ?> #divServicos");
+                            $("#quantidade_servico").val('');
+                            $("#preco_servico").val('');
+                            $("#resultado").val('');
+                            $("#desconto").val('');
+                            $("#divValorTotal").load("<?php echo current_url(); ?> #divValorTotal");
+                            $("#servico").val('').focus();
+                        } else {
+                            Swal.fire({
+                                type: "error",
+                                title: "Atenção",
+                                text: "Ocorreu um erro ao tentar adicionar serviço."
+                            });
+                        }
+                    }
+                });
+                return false;
+            }
+        });
+        
+        // WhatsApp Click Listener (Defensive)
+        $(document).off('click', '.btn-enviar-whatsapp').on('click', '.btn-enviar-whatsapp', function(e) {
+            e.preventDefault();
+            var idOs = $(this).data('id-os');
+            console.log("WhatsApp Send Clicked. OS:", idOs);
+
+            Swal.fire({
+                title: 'Enviar WhatsApp?',
+                text: "Deseja enviar a notificação da OS para o cliente?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sim, enviar!'
+            }).then((result) => {
+                if (result.value) {
+                    $.ajax({
+                        type: "POST",
+                        url: "<?php echo base_url(); ?>index.php/os/enviarWhatsappOs",
+                        data: { idOs: idOs },
+                        dataType: 'json',
+                        beforeSend: function() {
+                            Swal.fire({
+                                title: 'Enviando...',
+                                text: 'Aguarde enquanto enviamos a mensagem.',
+                                allowOutsideClick: false,
+                                onBeforeOpen: () => {
+                                    Swal.showLoading()
+                                }
+                            });
+                        },
+                        success: function(data) {
+                            if (data.result == true) {
+                                Swal.fire('Sucesso!', data.message, 'success');
+                            } else {
+                                Swal.fire('Erro!', data.message || 'Ocorreu um erro ao enviar.', 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Erro!', 'Falha na comunicação com o servidor.', 'error');
+                        }
+                    });
+                }
+            });
+        });
     });
 </script>
+

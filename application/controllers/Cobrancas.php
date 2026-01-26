@@ -212,6 +212,19 @@ class Cobrancas extends MY_Controller
 
         $this->load->model('cobrancas_model');
         $this->cobrancas_model->enviarEmail($this->uri->segment(3));
+        
+        // WhatsApp Notification
+        $cobranca = $this->cobrancas_model->getById($this->uri->segment(3));
+        if($cobranca) {
+             $this->load->library('whatsapp');
+             $msg = "Olá, segue sua cobrança #{$cobranca->idCobranca}.\nValor: R$ {$cobranca->valor}\nVencimento: " . date('d/m/Y', strtotime($cobranca->expire_at)) . "\nLink: " . $cobranca->link;
+             // Assuming clients table has 'celular' joined or available in getById. If not, might need a join. 
+             // Common MapOS pattern puts customer data in the result object.
+             if(isset($cobranca->celular)) {
+                 $this->whatsapp->enviarMensagem($cobranca->celular, $msg);
+             }
+        }
+
         $this->session->set_flashdata('success', 'Email adicionado na fila.');
 
         redirect(site_url('cobrancas/cobrancas/'));

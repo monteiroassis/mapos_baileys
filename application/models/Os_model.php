@@ -186,7 +186,9 @@ class Os_model extends CI_Model
             foreach ($query->result_array() as $row) {
                 $row_set[] = ['label' => $row['descricao'] . ' | Preço: R$ ' . $row['precoVenda'] . ' | Estoque: ' . $row['estoque'], 'estoque' => $row['estoque'], 'id' => $row['idProdutos'], 'preco' => $row['precoVenda']];
             }
-            echo json_encode($row_set);
+            return $row_set;
+        } else {
+            return [];
         }
     }
 
@@ -196,13 +198,15 @@ class Os_model extends CI_Model
         $this->db->limit(25);
         $this->db->like('codDeBarra', $q);
         $this->db->or_like('descricao', $q);
-        $this->db->where('saida', 1);
         $query = $this->db->get('produtos');
+        $row_set = [];
         if ($query->num_rows() > 0) {
             foreach ($query->result_array() as $row) {
                 $row_set[] = ['label' => $row['descricao'] . ' | Preço: R$ ' . $row['precoVenda'] . ' | Estoque: ' . $row['estoque'], 'estoque' => $row['estoque'], 'id' => $row['idProdutos'], 'preco' => $row['precoVenda']];
             }
-            echo json_encode($row_set);
+            return $row_set;
+        } else {
+            return [];
         }
     }
 
@@ -215,11 +219,14 @@ class Os_model extends CI_Model
         $this->db->or_like('celular', $q);
         $this->db->or_like('documento', $q);
         $query = $this->db->get('clientes');
+        $row_set = [];
         if ($query->num_rows() > 0) {
             foreach ($query->result_array() as $row) {
                 $row_set[] = ['label' => $row['nomeCliente'] . ' | Telefone: ' . $row['telefone'] . ' | Celular: ' . $row['celular'] . ' | Documento: ' . $row['documento'], 'id' => $row['idClientes']];
             }
-            echo json_encode($row_set);
+            return $row_set;
+        } else {
+            return [];
         }
     }
 
@@ -230,11 +237,14 @@ class Os_model extends CI_Model
         $this->db->like('nome', $q);
         $this->db->where('situacao', 1);
         $query = $this->db->get('usuarios');
+        $row_set = [];
         if ($query->num_rows() > 0) {
             foreach ($query->result_array() as $row) {
                 $row_set[] = ['label' => $row['nome'] . ' | Telefone: ' . $row['telefone'], 'id' => $row['idUsuarios']];
             }
-            echo json_encode($row_set);
+            return $row_set;
+        } else {
+            return [];
         }
     }
 
@@ -244,11 +254,14 @@ class Os_model extends CI_Model
         $this->db->limit(25);
         $this->db->like('LOWER(refGarantia)', $q);
         $query = $this->db->get('garantias');
+        $row_set = [];
         if ($query->num_rows() > 0) {
             foreach ($query->result_array() as $row) {
                 $row_set[] = ['label' => $row['refGarantia'], 'id' => $row['idGarantias']];
             }
-            echo json_encode($row_set);
+            return $row_set;
+        } else {
+            return [];
         }
     }
 
@@ -257,12 +270,20 @@ class Os_model extends CI_Model
         $this->db->select('*');
         $this->db->limit(25);
         $this->db->like('nome', $q);
+        $this->db->or_like('descricao', $q);
         $query = $this->db->get('servicos');
+        
+        // Debug
+        // log_message('error', 'AutoComplete Servico Query: ' . $this->db->last_query());
+        
+        $row_set = [];
         if ($query->num_rows() > 0) {
             foreach ($query->result_array() as $row) {
                 $row_set[] = ['label' => $row['nome'] . ' | Preço: R$ ' . $row['preco'], 'id' => $row['idServicos'], 'preco' => $row['preco']];
             }
-            echo json_encode($row_set);
+            return $row_set;
+        } else {
+            return [];
         }
     }
 

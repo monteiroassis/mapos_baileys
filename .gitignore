@@ -29,3 +29,15 @@ ci_sessions/
 uploads
 application/.env
 assets/userImage
+
+# Logs e Backups
+*.log
+*.bak
+
+# Node dependencies
+node_modules/
+api/whatsapp/node_modules/
+
+# WhatsApp Auth
+api/whatsapp/auth_info_baileys/
+auth_info_baileys/

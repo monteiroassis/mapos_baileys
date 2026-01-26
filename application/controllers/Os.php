@@ -162,6 +162,13 @@ class Os extends MY_Controller
                     $this->enviarOsPorEmail($idOs, $remetentes, 'Ordem de Serviço - Criada');
                 }
 
+                // WhatsApp Notification
+                if($this->data['configuration']['notifica_whats'] != '') {
+                    $this->load->library('whatsapp');
+                    $msg = "Olá {$os->nomeCliente}, sua Ordem de Serviço #{$idOs} foi criada com sucesso.\nStatus: {$os->status}\nDescrição: {$os->descricaoProduto}";
+                    $this->whatsapp->enviarMensagem($os->celular, $msg);
+                }
+
                 $this->session->set_flashdata('success', 'OS adicionada com sucesso, você pode adicionar produtos ou serviços a essa OS nas abas de Produtos e Serviços!');
                 log_info('Adicionou uma OS. ID: ' . $id);
                 redirect(site_url('os/editar/') . $id);
@@ -273,6 +280,13 @@ class Os extends MY_Controller
                             break;
                     }
                     $this->enviarOsPorEmail($idOs, $remetentes, 'Ordem de Serviço - Editada');
+                }
+
+                // WhatsApp Notification
+                if($this->data['configuration']['notifica_whats'] != '') {
+                    $this->load->library('whatsapp');
+                    $msg = "Olá {$os->nomeCliente}, sua Ordem de Serviço #{$idOs} foi atualizada.\nNovo Status: {$os->status}";
+                    $this->whatsapp->enviarMensagem($os->celular, $msg);
                 }
 
                 $this->session->set_flashdata('success', 'Os editada com sucesso!');
@@ -632,48 +646,66 @@ class Os extends MY_Controller
     public function autoCompleteProduto()
     {
         if (isset($_GET['term'])) {
-            $q = strtolower($_GET['term']);
-            $this->os_model->autoCompleteProduto($q);
+            $q = $_GET['term'];
+            $result = $this->os_model->autoCompleteProduto($q);
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode($result));
         }
     }
 
     public function autoCompleteProdutoSaida()
     {
         if (isset($_GET['term'])) {
-            $q = strtolower($_GET['term']);
-            $this->os_model->autoCompleteProdutoSaida($q);
+            $q = $_GET['term'];
+            $result = $this->os_model->autoCompleteProdutoSaida($q);
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode($result));
         }
     }
 
     public function autoCompleteCliente()
     {
         if (isset($_GET['term'])) {
-            $q = strtolower($_GET['term']);
-            $this->os_model->autoCompleteCliente($q);
+            $q = $_GET['term'];
+            $result = $this->os_model->autoCompleteCliente($q);
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode($result));
         }
     }
 
     public function autoCompleteUsuario()
     {
         if (isset($_GET['term'])) {
-            $q = strtolower($_GET['term']);
-            $this->os_model->autoCompleteUsuario($q);
+            $q = $_GET['term'];
+            $result = $this->os_model->autoCompleteUsuario($q);
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode($result));
         }
     }
 
     public function autoCompleteTermoGarantia()
     {
         if (isset($_GET['term'])) {
-            $q = strtolower($_GET['term']);
-            $this->os_model->autoCompleteTermoGarantia($q);
+            $q = $_GET['term'];
+            $result = $this->os_model->autoCompleteTermoGarantia($q);
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode($result));
         }
     }
 
     public function autoCompleteServico()
     {
         if (isset($_GET['term'])) {
-            $q = strtolower($_GET['term']);
-            $this->os_model->autoCompleteServico($q);
+            $q = $_GET['term'];
+            $result = $this->os_model->autoCompleteServico($q);
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode($result));
         }
     }
 
@@ -1179,4 +1211,145 @@ class Os extends MY_Controller
             echo json_encode(['result' => false]);
         }
     }
+
+    public function enviarWhatsappPdf($idOs)
+    {
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'vOs')) {
+            $this->session->set_flashdata('error', 'Você não tem permissão para enviar WhatsApp.');
+            redirect(base_url() . 'index.php/os/visualizar/' . $idOs);
+        }
+
+        $retorno = $this->_processarEnvioWhatsapp($idOs);
+
+        if ($retorno['result']) {
+            $this->session->set_flashdata('success', $retorno['message']);
+        } else {
+            $this->session->set_flashdata('error', $retorno['message']);
+        }
+
+        redirect(base_url() . 'index.php/os/visualizar/' . $idOs);
+    }
+
+    public function enviarWhatsappOs()
+    {
+        $idOs = $this->input->post('idOs');
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'vOs')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para enviar WhatsApp.']);
+            return;
+        }
+
+        $retorno = $this->_processarEnvioWhatsapp($idOs);
+
+        echo json_encode($retorno);
+    }
+
+    private function _processarEnvioWhatsapp($idOs)
+    {
+        $this->load->model('os_model');
+        $this->load->library('whatsapp');
+        $this->load->model('mapos_model');
+
+        $result = $this->os_model->getById($idOs);
+        if (! $result) {
+            return ['result' => false, 'message' => 'OS não encontrada.'];
+        }
+
+        $this->data['result'] = $result;
+        $this->data['produtos'] = $this->os_model->getProdutos($idOs);
+        $this->data['servicos'] = $this->os_model->getServicos($idOs);
+        $this->data['anexos'] = $this->os_model->getAnexos($idOs);
+        $this->data['emitente'] = $this->mapos_model->getEmitente();
+        
+        if ($this->data['configuration']['pix_key']) {
+            $this->data['qrCode'] = $this->os_model->getQrCode(
+                $idOs,
+                $this->data['configuration']['pix_key'],
+                $this->data['emitente']
+            );
+            $this->data['chaveFormatada'] = $this->formatarChave($this->data['configuration']['pix_key']);
+        }
+
+        $html = $this->load->view('os/imprimirOs', $this->data, true);
+
+        // Remove window.print() and other scripts for PDF
+        $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $html);
+
+        // Replace base_url() assets with FCPATH to avoid HTTP deadlock in mPDF
+        $html = str_replace(base_url() . 'assets/', FCPATH . 'assets/', $html);
+        
+        // Ensure local paths for images are used (handle generic protocol://)
+        $domain = preg_replace('#^https?://#', '', base_url());
+        $html = str_replace('src="' . base_url(), 'src="' . FCPATH, $html);
+        $html = str_replace('href="' . base_url(), 'href="' . FCPATH, $html);
+
+        try {
+            log_message('error', 'Iniciando geracao de PDF para OS #' . $idOs);
+            
+            $mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4']);
+            
+            // Allow local file access
+            $mpdf->showImageErrors = true;
+            
+            $mpdf->WriteHTML($html);
+            
+            $filename = 'OS_' . $idOs . '_' . date('YmdHis') . '.pdf';
+            $filepath = FCPATH . 'assets/anexos/' . $filename;
+            
+            log_message('error', 'Salvando PDF em: ' . $filepath);
+            $mpdf->Output($filepath, \Mpdf\Output\Destination::FILE);
+
+            log_message('error', 'PDF salvo. Iniciando envio WhatsApp.');
+            
+            // Calculate totals for message replacement
+            $totalCalc = $this->os_model->valorTotalOS($idOs);
+            $totalProdutos = $totalCalc['totalProdutos'];
+            $totalServico = $totalCalc['totalServico'];
+            
+            $valorFinal = $totalCalc['valor_desconto'] != 0 ? number_format($totalCalc['valor_desconto'], 2, ',', '.') : number_format($totalProdutos + $totalServico, 2, ',', '.');
+            $emitente = $this->mapos_model->getEmitente();
+
+            $troca = [
+                $result->nomeCliente, 
+                $result->idOs, 
+                $result->status, 
+                'R$ ' . $valorFinal, 
+                strip_tags($result->descricaoProduto), 
+                ($emitente ? $emitente->nome : ''), 
+                ($emitente ? $emitente->telefone : ''), 
+                strip_tags($result->observacoes), 
+                strip_tags($result->defeito), 
+                strip_tags($result->laudoTecnico), 
+                date('d/m/Y', strtotime($result->dataFinal)), 
+                date('d/m/Y', strtotime($result->dataInicial)), 
+                $result->garantia . ' dias'
+            ];
+
+            $texto_de_notificacao = $this->data['configuration']['notifica_whats'];
+            $procura = ['{CLIENTE_NOME}', '{NUMERO_OS}', '{STATUS_OS}', '{VALOR_OS}', '{DESCRI_PRODUTOS}', '{EMITENTE}', '{TELEFONE_EMITENTE}', '{OBS_OS}', '{DEFEITO_OS}', '{LAUDO_OS}', '{DATA_FINAL}', '{DATA_INICIAL}', '{DATA_GARANTIA}'];
+            $mensagem = str_replace($procura, $troca, $texto_de_notificacao);
+            $mensagem = strip_tags($mensagem);
+
+            $resultado = $this->whatsapp->enviarMedia($result->celular_cliente, $mensagem, $filepath, $filename);
+            log_message('error', 'Retorno WhatsApp: ' . json_encode($resultado));
+
+            // Delete temporary file
+            if (file_exists($filepath)) {
+                unlink($filepath);
+            }
+
+            if ($resultado['result']) {
+                return ['result' => true, 'message' => 'OS enviada pelo WhatsApp com sucesso!'];
+            } else {
+                return ['result' => false, 'message' => 'Erro ao enviar WhatsApp: ' . $resultado['message']];
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Erro critico ao gerar PDF para WhatsApp: ' . $e->getMessage());
+            return ['result' => false, 'message' => 'Erro ao gerar PDF para envio.'];
+        }
+    }
+
+
+
+
 }
