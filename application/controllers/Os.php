@@ -1345,7 +1345,7 @@ class Os extends MY_Controller
 
         } catch (\Exception $e) {
             log_message('error', 'Erro critico ao gerar PDF para WhatsApp: ' . $e->getMessage());
-            return ['result' => false, 'message' => 'Erro ao gerar PDF para envio.'];
+            return ['result' => false, 'message' => 'Erro ao gerar PDF: ' . $e->getMessage()];
         }
     }
 
