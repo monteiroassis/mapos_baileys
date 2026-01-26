@@ -54,7 +54,7 @@ class Whatsapp
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Timeout of 10 seconds
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60); // Timeout of 60 seconds for media uploads
 
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
