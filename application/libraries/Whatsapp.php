@@ -9,8 +9,8 @@ class Whatsapp
     public function __construct()
     {
         $this->CI =& get_instance();
-        // Assuming the Node.js service runs on localhost:3000
-        $this->apiUrl = 'http://localhost:3000';
+        // In Docker environment, use the container name
+        $this->apiUrl = 'http://mapos_whatsapp:3000';
     }
 
     public function enviarMensagem($numero, $mensagem)

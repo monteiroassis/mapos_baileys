@@ -666,7 +666,7 @@ class Mapos extends MY_Controller {
         }
 
         // Send stop request to server
-        $ch = curl_init('http://localhost:3000/stop');
+        $ch = curl_init('http://mapos_whatsapp:3000/stop');
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 2);
@@ -690,7 +690,7 @@ class Mapos extends MY_Controller {
             return;
         }
 
-        $ch = curl_init('http://localhost:3000/logout');
+        $ch = curl_init('http://mapos_whatsapp:3000/logout');
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Wait bit longer for file deletion
@@ -712,7 +712,7 @@ class Mapos extends MY_Controller {
              return;
         }
 
-        $ch = curl_init('http://localhost:3000/status');
+        $ch = curl_init('http://mapos_whatsapp:3000/status');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 2);
         $response = curl_exec($ch);
