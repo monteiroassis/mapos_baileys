@@ -58,7 +58,10 @@ RUN apt update && apt upgrade -y \
 # Permission for PHP to write in volumes
 RUN usermod -u 1000 www-data \
     && mkdir -p /var/www/html/application/vendor/mpdf/mpdf/tmp/mpdf \
-    && chmod -R 777 /var/www/html/application/vendor/mpdf/mpdf/tmp/mpdf
+    && chmod -R 777 /var/www/html/application/vendor/mpdf/mpdf/tmp/mpdf \
+    && touch /var/www/html/application/.env \
+    && chmod 666 /var/www/html/application/.env \
+    && chmod -R 775 /var/www/html/application/config
 
 # Install supervisor and cron
 RUN apt update && apt install supervisor cron -y
