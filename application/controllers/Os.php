@@ -166,7 +166,8 @@ class Os extends MY_Controller
                 if($this->data['configuration']['notifica_whats'] != '') {
                     $this->load->library('whatsapp');
                     $msg = "Olá {$os->nomeCliente}, sua Ordem de Serviço #{$idOs} foi criada com sucesso.\nStatus: {$os->status}\nDescrição: {$os->descricaoProduto}";
-                    $this->whatsapp->enviarMensagem($os->celular, $msg);
+                    $retorno = $this->whatsapp->enviarMensagem($os->celular_cliente, $msg);
+                    if (!$retorno['result']) log_message('error', 'Erro WhatsApp Adicionar OS: ' . $retorno['message']);
                 }
 
                 $this->session->set_flashdata('success', 'OS adicionada com sucesso, você pode adicionar produtos ou serviços a essa OS nas abas de Produtos e Serviços!');
@@ -286,7 +287,8 @@ class Os extends MY_Controller
                 if($this->data['configuration']['notifica_whats'] != '') {
                     $this->load->library('whatsapp');
                     $msg = "Olá {$os->nomeCliente}, sua Ordem de Serviço #{$idOs} foi atualizada.\nNovo Status: {$os->status}";
-                    $this->whatsapp->enviarMensagem($os->celular, $msg);
+                    $retorno = $this->whatsapp->enviarMensagem($os->celular_cliente, $msg);
+                    if (!$retorno['result']) log_message('error', 'Erro WhatsApp Editar OS: ' . $retorno['message']);
                 }
 
                 $this->session->set_flashdata('success', 'Os editada com sucesso!');
