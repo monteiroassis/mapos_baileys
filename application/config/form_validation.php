@@ -23,6 +23,11 @@ $config = [
             'rules' => 'trim',
         ],
         [
+            'field' => 'celular',
+            'label' => 'Celular',
+            'rules' => 'required|trim',
+        ],
+        [
             'field' => 'email',
             'label' => 'Email',
             'rules' => 'trim|valid_email|unique[clientes.email.' . get_instance()->uri->segment(3) . '.idClientes]',

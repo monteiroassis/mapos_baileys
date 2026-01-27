@@ -118,7 +118,7 @@
                             </div>
                         </div>
                         <div class="control-group">
-                            <label for="celular" class="control-label">Celular</label>
+                            <label for="celular" class="control-label">Celular<span class="required">*</span></label>
                             <div class="controls">
                                 <input id="celular" type="text" name="celular" value="<?php echo $result->celular; ?>" />
                             </div>
@@ -238,6 +238,9 @@
         $('#formCliente').validate({
             rules: {
                 nomeCliente: {
+                    required: true
+                },
+                celular: {
                     required: true
                 },
             },

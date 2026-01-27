@@ -16,7 +16,7 @@ class Whatsapp
     public function enviarMensagem($numero, $mensagem)
     {
         if (empty($numero) || empty($mensagem)) {
-            return false;
+            return ['result' => false, 'message' => 'Número ou mensagem vazios.'];
         }
 
         $url = $this->apiUrl . '/send';
@@ -31,7 +31,7 @@ class Whatsapp
     public function enviarMedia($numero, $mensagem, $arquivoPath, $nomeArquivo = null)
     {
         if (empty($numero) || !file_exists($arquivoPath)) {
-            return false;
+            return ['result' => false, 'message' => 'Número vazio ou arquivo não encontrado.'];
         }
 
         $url = $this->apiUrl . '/send';
