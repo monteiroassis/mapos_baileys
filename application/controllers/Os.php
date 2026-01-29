@@ -165,7 +165,8 @@ class Os extends MY_Controller
                 // WhatsApp Notification
                 if($this->data['configuration']['notifica_whats'] != '') {
                     $this->load->library('whatsapp');
-                    $msg = "Olá {$os->nomeCliente}, sua Ordem de Serviço #{$idOs} foi criada com sucesso.\nStatus: {$os->status}\nDescrição: {$os->descricaoProduto}";
+                    $descricaoProduto = strip_tags($os->descricaoProduto);
+                    $msg = "Olá {$os->nomeCliente}, sua Ordem de Serviço #{$idOs} foi criada com sucesso.\nStatus: {$os->status}\nDescrição: {$descricaoProduto}";
                     $retorno = $this->whatsapp->enviarMensagem($os->celular_cliente, $msg);
                     if (!$retorno['result']) log_message('error', 'Erro WhatsApp Adicionar OS: ' . $retorno['message']);
                 }
