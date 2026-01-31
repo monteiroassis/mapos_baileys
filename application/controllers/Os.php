@@ -1282,8 +1282,14 @@ class Os extends MY_Controller
         
         // Ensure local paths for images are used (handle generic protocol://)
         // Ensure local paths for images are used (handle generic protocol://)
-        $html = preg_replace('/src=["\'](https?:\/\/[^\/]+)?\/assets\//', 'src="' . FCPATH . 'assets/', $html);
-        $html = preg_replace('/href=["\'](https?:\/\/[^\/]+)?\/assets\//', 'href="' . FCPATH . 'assets/', $html);
+        // Ensure local paths for images are used (handle generic protocol://)
+        // Matches http://domain.com/assets/ or https://1.2.3.4:8000/assets/
+        $html = preg_replace('/src=["\'](https?:\/\/[^\/"\']+) \/assets\//i', 'src="' . FCPATH . 'assets/', $html);
+        $html = preg_replace('/href=["\'](https?:\/\/[^\/"\']+) \/assets\//i', 'href="' . FCPATH . 'assets/', $html);
+        
+        // Also a more generic fallback just in case the space or quotes are weird
+        $html = preg_replace('/src=["\'](https?:\/\/[^"\' >]+)\/assets\//i', 'src="' . FCPATH . 'assets/', $html);
+        $html = preg_replace('/href=["\'](https?:\/\/[^"\' >]+)\/assets\//i', 'href="' . FCPATH . 'assets/', $html);
 
         try {
             log_message('error', 'Iniciando geracao de PDF para OS #' . $idOs);
