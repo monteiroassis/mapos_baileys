@@ -61,6 +61,7 @@ RUN usermod -u 1000 www-data \
     && chmod -R 777 /var/www/html/application/vendor/mpdf/mpdf/tmp/mpdf \
     && touch /var/www/html/application/.env \
     && chmod 666 /var/www/html/application/.env \
+    && mkdir -p /var/www/html/application/config \
     && chmod -R 775 /var/www/html/application/config
 
 # Install supervisor and cron
